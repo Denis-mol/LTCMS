@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Script</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+<h1>Script {{scr['name']}}</h1>
+<table id="scr-table">
+  <thead>
+    <tr>
+      <th>Поле</th>
+      <th>Значение</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+  <tfoot><tr></tr></tfoot>
+</table>
+<script>
+const scr = {{ scr|tojson }};
+</script>
+<script src="{{ url_for('static', filename='scr.js') }}"></script>
+<div id="status-bar" style="position:fixed;bottom:0;left:0;width:100%;background:#222;color:#fff;padding:10px;">
+          waiting
+        </div>
+        <script>
+          const evt = new EventSource('/stream');
+          evt.onmessage = function(e){
+             document.getElementById('status-bar').textContent = e.data;
+          }
+        </script>
+</body>
+</html>

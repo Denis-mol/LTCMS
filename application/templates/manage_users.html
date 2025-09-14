@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Users List</title>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+<h1>Manage Users</h1>
+<ul id="users_list">
+    {% for user in users_list %}
+            <li data-ip="{{ user['name'] }}">
+            <table>
+                <tr>
+                  <td>name: {{ user['name'] }}</td>
+                  <td>status: {{ user['status'] }}</td>
+                  <td>permissions: {{ user['permissions'] }}</td>
+                  <td>range: {{ user['range'] }}</td>
+
+                  <td><button onclick="editRow('{{ user['name'] }}')">Edit User</button></td>
+                  <td><button onclick="deleteRow('{{ user['name'] }}')">Delete User</button></td>
+                </tr>
+            </table>
+            </li>
+    {% endfor %}
+</ul>
+<button type="button" onclick="addUser()">ADD User</button>
+<script src="{{ url_for('static', filename='manage_users.js') }}"></script>
+<div id="status-bar" style="position:fixed;bottom:0;left:0;width:100%;background:#222;color:#fff;padding:10px;">
+          waiting
+        </div>
+        <script>
+          const evt = new EventSource('/stream');
+          evt.onmessage = function(e){
+             document.getElementById('status-bar').textContent = e.data;
+          }
+        </script>
+</body>
+</html>
