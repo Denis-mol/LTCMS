@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>VM List</title>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+   <h1>Load stands</h1>
+    <ul id="vm-list">
+
+    {% for item in vmlist %}
+        <li data-ip="{{ item['ip'] }}">
+            <table>
+                <tr>
+                  <td>{{ item['ip'] }}</td>
+                  <td>{{ item['name'] }}</td>
+                  <td>{{ item['status'] }}</td>
+                  <td></td>
+                </tr>
+            </table>
+        </li>
+    {% endfor %}
+    </ul>
+    <button type="button" onclick="manage_open()">Manage Stands</button>
+    <button type="button" onclick="manage_scripts_open()">Manage Scripts</button>
+    <button type="button" onclick="mass_updates_open()">Mass Update</button>
+    <button type="button" onclick="mass_logs_open()">Get logs</button>
+    <script src="{{ url_for('static', filename='vms.js') }}"></script>
+    <div id="status-bar" style="position:fixed;bottom:0;left:0;width:100%;background:#222;color:#fff;padding:10px;">
+          waiting
+        </div>
+        <script>
+          const evt = new EventSource('/stream');
+          evt.onmessage = function(e){
+          document.getElementById('status-bar').textContent = e.data;
+          }
+        </script>
+</body>
+
+</html>

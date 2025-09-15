@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>VM</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <h1>VM {{ vm['ip'] }}</h1>
+    <table id="vm-table">
+        <tbody>
+            <tr>
+                <td>name: {{ vm['name'] }}</td>
+                <td>status: {{ vm['status'] }}</td>
+                <td>category: {{ vm['category'] }}</td>
+                <td>monitoring time: {{ vm['monitoring'] }}</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>Processes in {{ vm['ip'] }}</h2>
+    <table id="proc-table">
+        <thead>
+            <tr>
+                <th>name</th>
+                <th>version</th>
+                <th>monitoring period</th>
+                <th>logs path</th>
+                <th colspan="3">actions</th>
+            </tr>
+        </thead>
+        <tbody>
+
+            {% for proc in proclist %}
+
+                <tr>
+                    <td>{{ proc['name'] }}</td>
+                    <td>{{ proc['version'] }}</td>
+                    <td>{{ proc['monitoring_period'] }}</td>
+                    <td>{{ proc['logs_path'] }}</td>
+                    <td>
+  <button onclick='editRow({{ proc|tojson|safe }}, "{{ vm["ip"] }}")'>Edit</button>
+</td>
+                   <td>
+  <button onclick="deleteRow('{{ vm['ip'] }}', '{{ proc['name'] }}')">Delete</button>
+</td>
+                </tr>
+            {% endfor %}
+            <tr>
+                <td colspan="7"><button onclick="add_proc_to_monitoring('{{ vm['ip'] }}')">ADD PROCESS</button></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <button id="add_proc_to_monitoringBtn" onclick="add_proc_to_monitoring('{{ vm['ip'] }}')">MANAGE PROCESSES</button>
+
+    <table id="proc-data-table">
+        <tbody>
+
+        </tbody>
+    </table>
+    <button id="monitoringBtn" onclick="monitoring_vm('{{ vm['ip'] }}')">SHOW PROCESSES</button>
+
+    <button id="logsBtn" type="button" onclick="logs_vm_open()">Get logs</button>
+    <table id="log-table">
+        <tbody>
+
+        </tbody>
+    </table>
+
+    <div id="status-bar" style="position:fixed;bottom:0;left:0;width:100%;background:#222;color:#fff;padding:10px;">
+        waiting
+    </div>
+
+    <script src="{{ url_for('static', filename='vm.js') }}"></script>
+    <script>
+        const add_monitoringBtn = document.getElementById('add_proc_to_monitoringBtn');
+        const procTable = document.getElementById('proc-table');
+        let collapsedProcTable = false;
+        add_monitoringBtn.addEventListener('click', function () {
+            collapsedProcTable = !collapsedProcTable;
+            procTable.style.display = collapsedProcTable ? 'none' : '';
+            add_monitoringBtn.textContent = collapsedProcTable ? 'Show Processes' : 'Hide Processes';
+        })
+
+        const monitoringBtn = document.getElementById('monitoringBtn');
+        const table = document.getElementById('proc-data-table');
+        let collapsed = false;
+        monitoringBtn.addEventListener('click', function () {
+            collapsed = !collapsed;
+            table.style.display = collapsed ? 'none' : '';
+            monitoringBtn.textContent = collapsed ? 'Show Monitoring' : 'Hide Monitoring';
+        })
+        const evt = new EventSource('/stream');
+        evt.onmessage = function(e){
+           document.getElementById('status-bar').textContent = e.data;
+        }
+    </script>
+</body>
+</html>

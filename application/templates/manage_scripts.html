@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>VM List</title>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <h1>Manage scripts</h1>
+    <ul id="scripts-list">
+    {% for item in scripts %}
+        <li data-scripts="{{ item['name'] }}">
+            <table>
+                <tr>
+                  <td>{{ item['name'] }}</td>
+                  <td>{{ item['dir'] }}</td>
+                  <td>
+                    {% if item['status'] == 'new' %}new
+                    {% elif item['status'] == 'in_progress' %}in_progress
+                    {% elif item['status'] == 'done' %}done
+                    {% else %}{{ item['status'] }}{% endif %}
+                  </td>
+                  <td>
+                    {% if item['category'] == 'a' %}category A
+                    {% elif item['category'] == 'b' %}category B
+                    {% elif item['category'] == 'c' %}category C
+                    {% else %}{{ item['category'] }}{% endif %}
+                  </td>
+                  <td>
+                    <button onclick="gotoSCR('{{ item['name'] }}')">gotoSCR</button>
+                  </td>
+                  <td>
+                    <button onclick="deleteRow('{{ item['name'] }}')">Delete</button>
+                  </td>
+                </tr>
+            </table>
+        </li>
+    {% endfor %}
+    </ul>
+    <button type="button" onclick="addRow()">ADD</button>
+    <script src="{{ url_for('static', filename='manage_scripts.js') }}"></script>
+<div id="status-bar" style="position:fixed;bottom:0;left:0;width:100%;background:#222;color:#fff;padding:10px;">
+          waiting
+        </div>
+        <script>
+          const evt = new EventSource('/stream');
+          evt.onmessage = function(e){
+             document.getElementById('status-bar').textContent = e.data;
+          }
+        </script>
+</body>
+</html>

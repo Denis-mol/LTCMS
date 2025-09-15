@@ -1,10 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
-
-</body>
+    <h1 id="header">Welcome !</h1>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <body>
+        <button id=vmBtn type="button" onclick="stands_open()">Manage Stands</button>
+        <button id=usersBtn type="button" onclick="users_open()">Manage Users</button>
+        <script src="{{ url_for('static', filename='index.js') }}"></script>
+    <div id="status-bar" style="position:fixed;bottom:0;left:0;width:100%;background:#222;color:#fff;padding:10px;">
+          waiting
+        </div>
+        <script>
+          const evt = new EventSource('/stream');
+          evt.onmessage = function(e){
+             document.getElementById('status-bar').textContent = e.data;
+          }
+        </script>
+    </body>
 </html>

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>VM List</title>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <style>
+     table {
+    border-collapse: collapse;
+    width: 50%;
+    font-family: Times New Roman, sans-serif;
+}
+</style>
+</head>
+<body>
+
+<h1>Manage stands</h1>
+<ul id="vm-list">
+    {% for item in vmlist %}
+        <li data-ip="{{ item['ip'] }}">
+            <table>
+                <tr>
+                  <td>IP: {{ item['ip'] }}</td>
+                  <td>name: {{ item['name'] }}</td>
+                  <td>status:
+                    {% if item[''] == 'new' %}new
+                    {% elif item['status'] == 'in_progress' %}В in_progress
+                    {% elif item['status'] == 'done' %}on_paused
+                    {% else %}{{ item['status'] }}{% endif %}
+                  </td>
+                  <td>category:
+                    {% if item['category'] == 'a' %}category A
+                    {% elif item['category'] == 'b' %}category B
+                    {% elif item['category'] == 'c' %}category C
+                    {% else %}{{ item['category'] }}{% endif %}
+                  </td>
+                   <td>monitoring time: {{ item['monitoring'] }}</td>
+                  <td><button onclick="gotoRow('{{ item['ip'] }}')">ToVM</button></td>
+                    <td><button onclick="editRow('{{ item['ip'] }}')">Edit</button></td>
+                  <td><button onclick="deleteRow('{{ item['ip'] }}')">Delete</button></td>
+                </tr>
+            </table>
+        </li>
+    {% endfor %}
+</ul>
+<button type="button" onclick="addRow()">ADD</button>
+<script src="{{ url_for('static', filename='manage_vm.js') }}"></script>
+<div id="status-bar" style="position:fixed;bottom:0;left:0;width:100%;background:#222;color:#fff;padding:10px;">
+          waiting
+        </div>
+        <script>
+          const evt = new EventSource('/stream');
+          evt.onmessage = function(e){
+             document.getElementById('status-bar').textContent = e.data;
+          }
+        </script>
+</body>
+</html>
