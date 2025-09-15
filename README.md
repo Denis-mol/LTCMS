@@ -2,4 +2,4 @@
 web server for running tests and monitoring the test loop status
 
 
-.env file need contains "START_SERVER_PORT=5002,MONITORING_TAIL=3,MAX_LOG_TAIL=50"
+.env file need contains "START_SERVER_PORT=5002,START_SERVER_HOST=127.0.0.1,MONITORING_TAIL=3,MAX_LOG_TAIL=50"
