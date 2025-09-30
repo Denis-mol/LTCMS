@@ -4,8 +4,10 @@
     <meta charset="utf-8">
     <title>VM</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+     <style>.modal { display:none;}</style>
 </head>
 <body>
+   <script src="{{ url_for('static', filename='vm.js') }}"></script>
     <h1>VM {{ vm['ip'] }}</h1>
     <table id="vm-table">
         <tbody>
@@ -17,9 +19,7 @@
             </tr>
         </tbody>
     </table>
-
-    <h2>Processes in {{ vm['ip'] }}</h2>
-    <table id="proc-table">
+   <table id="proc-table" style="display:none;">
         <thead>
             <tr>
                 <th>name</th>
@@ -32,55 +32,95 @@
         <tbody>
 
             {% for proc in proclist %}
+                <tr>
+                    <td>{{ proc['name'] }}</td>
+                    <td>{{ proc['version'] }}</td>
+                    <td>{{ proc['monitoring_period'] }}</td>
+                    <td>{{ proc['logs_path'] }}</td>
+                    <td> <button onclick='editRow({{ proc|tojson|safe }}, "{{ vm["ip"] }}")'>Edit</button></td>
+                    <td>  <button onclick="deleteRow('{{ vm['ip'] }}', '{{ proc['name'] }}')">Delete</button></td>
+                </tr>
+            {% endfor %}
+        </tbody>
 
+                <td><button id="add_processBtn" onclick="add_proc_to_monitoring('{{ vm['ip'] }}')">ADD PROCESS</button></td>
+                <table  id="add-proc" style="display:none;">  <tbody></tbody></table>
+                <table id="proc-data-table">  <tbody> </tbody> </table>
+       </table>
+      <table>
+           <tr><td><button id="show_processBtn">PROCESS</button></td></tr>
+           <tr><td><button id="monitoringBtn" onclick="monitoring_vm('{{ vm['ip'] }}')">MONITORING</button></td></tr>
+           <tr><td><button id="logsBtn" >LOGS</button></td></tr>
+       </table>
+      <table id="proc-table2" style="display:none;">
+        <thead>
+            <tr>
+                <th>name</th>
+                <th>version</th>
+                <th>monitoring period</th>
+                <th>logs path</th>
+                <th colspan="3">actions</th>
+            </tr>
+        </thead>
+       <tbody>
+            {% for proc in proclist %}
                 <tr>
                     <td>{{ proc['name'] }}</td>
                     <td>{{ proc['version'] }}</td>
                     <td>{{ proc['monitoring_period'] }}</td>
                     <td>{{ proc['logs_path'] }}</td>
                     <td>
-  <button onclick='editRow({{ proc|tojson|safe }}, "{{ vm["ip"] }}")'>Edit</button>
-</td>
-                   <td>
-  <button onclick="deleteRow('{{ vm['ip'] }}', '{{ proc['name'] }}')">Delete</button>
-</td>
+                        <button  onclick="get_last_logs('{{ vm['ip'] }}',  '{{ proc['logs_path'] }}')">SHOW LAST LOGS</button>
+                    </td>
+                    <td>
+
+ <button onclick="document.getElementById('myModal2').style.display='flex'">GET ALL LOGS</button>
+                       <div id="myModal2" class="modal" display="none">
+  <div class="modal-content" >
+
+     <input id="localDir" type="text" placeholder="local dir">
+<button onclick="get_all_logs('{{ vm['ip'] }}', '{{ proc['logs_path'] }}', document.getElementById('localDir').value)">
+    GET ALL LOGS IN ZIP
+</button>
+        <button onclick="document.getElementById('myModal2').style.display='none'">Cancel</button>
+  </div>
+
+</div>
+
+
+                    </td>
                 </tr>
             {% endfor %}
-            <tr>
-                <td colspan="7"><button onclick="add_proc_to_monitoring('{{ vm['ip'] }}')">ADD PROCESS</button></td>
-            </tr>
         </tbody>
-    </table>
-
-    <button id="add_proc_to_monitoringBtn" onclick="add_proc_to_monitoring('{{ vm['ip'] }}')">MANAGE PROCESSES</button>
-
-    <table id="proc-data-table">
+      </table>
+   <table id="last_log" >
         <tbody>
-
         </tbody>
-    </table>
-    <button id="monitoringBtn" onclick="monitoring_vm('{{ vm['ip'] }}')">SHOW PROCESSES</button>
+   </table>
 
-    <button id="logsBtn" type="button" onclick="logs_vm_open()">Get logs</button>
-    <table id="log-table">
-        <tbody>
+    <div id="status-bar" style="position:fixed;bottom:0;left:0;width:100%;background:#222;color:#fff;padding:10px;">waiting</div>
 
-        </tbody>
-    </table>
+</body>
 
-    <div id="status-bar" style="position:fixed;bottom:0;left:0;width:100%;background:#222;color:#fff;padding:10px;">
-        waiting
-    </div>
-
-    <script src="{{ url_for('static', filename='vm.js') }}"></script>
     <script>
-        const add_monitoringBtn = document.getElementById('add_proc_to_monitoringBtn');
-        const procTable = document.getElementById('proc-table');
+
+        const show_processBtn = document.getElementById('show_processBtn');
+        const procTable = document.querySelector('#proc-table');
         let collapsedProcTable = false;
-        add_monitoringBtn.addEventListener('click', function () {
+        show_processBtn.addEventListener('click', function () {
             collapsedProcTable = !collapsedProcTable;
             procTable.style.display = collapsedProcTable ? 'none' : '';
-            add_monitoringBtn.textContent = collapsedProcTable ? 'Show Processes' : 'Hide Processes';
+            show_processBtn.textContent = collapsedProcTable ? 'SHOW PROCESSES' : 'HIDE PROCESSES';
+        })
+
+
+        const add_processBtn = document.getElementById('add_processBtn');
+        const add_procTable = document.querySelector('#add-proc');
+        let collapsedAddProcTable = false;
+        add_processBtn.addEventListener('click', function () {
+            collapsedAddProcTable = !collapsedAddProcTable;
+            add_procTable.style.display = collapsedAddProcTable ? 'none' : '';
+            add_processBtn.textContent = collapsedAddProcTable ? 'ADD PROCESS' : 'Hide ADD PROCESS';
         })
 
         const monitoringBtn = document.getElementById('monitoringBtn');
@@ -91,10 +131,20 @@
             table.style.display = collapsed ? 'none' : '';
             monitoringBtn.textContent = collapsed ? 'Show Monitoring' : 'Hide Monitoring';
         })
+
+        const logsBtn = document.getElementById('logsBtn');
+        const logsTable = document.getElementById('proc-table2');
+        let logsTableHidden = true;
+        logsBtn.addEventListener('click', function () {
+            logsTableHidden = !logsTableHidden;
+            logsTable.style.display = logsTableHidden ? 'none' : '';
+            logsBtn.textContent = logsTableHidden ? 'LOGS' : 'HIDE LOGS';
+        });
+
+
         const evt = new EventSource('/stream');
         evt.onmessage = function(e){
            document.getElementById('status-bar').textContent = e.data;
         }
     </script>
-</body>
 </html>

@@ -23,6 +23,36 @@
         </li>
     {% endfor %}
 </ul>
+
+<title>Load Test</title>
+<h2>Нагрузочное тестирование</h2>
+<form method="post" enctype="multipart/form-data">
+     <p>
+    <label>Файл сценария:</label>
+    <input type="file" name="urlfile" required><br>
+    <label>Запросов (requests):</label>
+    <input type="number" name="requests" value="1000"><br>
+    <label>Потоков (concurrency):</label>
+    <input type="number" name="concurrency" value="10"><br>
+    <label>Timeout (сек):</label>
+    <input type="number" step="0.000001" name="timeout" value="10"><br>
+    <p>
+    <button type="submit">Запустить</button>
+</form>
+{% if result %}
+<p>
+<p>
+<h3>Результат:</h3>
+<p>
+<p>
+<ul>
+  <li>Отправлено запросов: {{ result.requests_sent }}</li>
+  <li>Время выполнения, с: {{ result.time_seconds }}</li>
+  <li>Запросов/сек: {{ result.qps }}</li>
+</ul>
+{% elif error %}
+<div style="color:red">{{ error }}</div>
+{% endif %}
 <button onclick="sendChecked()">GetLogs</button>
 <script src="{{ url_for('static', filename='logs.js') }}"></script>
     <div id="status-bar" style="position:fixed;bottom:0;left:0;width:100%;background:#222;color:#fff;padding:10px;">

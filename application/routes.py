@@ -1,4 +1,6 @@
 import io
+import logging
+
 import subprocess
 import time
 
@@ -7,10 +9,9 @@ from quart_auth import basic_auth_required
 import pytest
 from contextlib import redirect_stdout
 from run import config
-from .helpers import (load_stands, save_vm_, delete_vm_by_ip, update_vm, dbs_init,
-                     load_last_monitoring, load_users, add_user,
-                     delete_user_by_name, current_status_messages, update_user, add_proc_to_processes,
-                     get_proc_from_processes, update_process, delete_process)
+from .helpers import (load_stands, save_vm_, delete_vm_by_ip, update_vm, dbs_init, load_last_monitoring, load_users,
+                      add_user, delete_user_by_name, current_status_messages, update_user, add_proc_to_processes,
+                      get_proc_from_processes, update_process, delete_process, load_last_log, get_logs, zip_all_logs)
 
 app = Quart(__name__)
 current_status = "redy"
@@ -21,23 +22,18 @@ app.config["user"] = "user"
 app.config["pass"] = "pass"
 
 
-
-
-
-
 @app.before_serving
 async def startup():
     """Initializes all databases at server start."""
     global current_status
     current_status = current_status_messages['dbs_init']
-    if config["USE_PRERUN_AUTOTEST"]:
-        result=subprocess.run(["pytest", "C:\\mirowwLTCS\\application\\tests.py"],
-        capture_output=True, text=True)
+    if 'Yes' == (config["USE_PRERUN_AUTOTEST"]):
+        result = subprocess.run(["pytest", "C:\\mirowwLTCS\\application\\tests.py"],
+                                capture_output=True, text=True)
         if result.returncode != 0:
-            raise EnvironmentError
-
+            logging.error("fail_selftest")
+            exit("fail_selftest")
     await dbs_init()
-
 
 
 @app.route('/stream')
@@ -50,7 +46,6 @@ def stream_status():
                 yield f"data: {current_status}\n\n"
                 prev = current_status
             time.sleep(1)
-
     return Response(event_stream(), content_type='text/event-stream')
 
 
@@ -163,6 +158,7 @@ async def delete_vm(ip):
 
 @app.route('/vm', methods=['GET'])
 async def open_vm():
+
     """Renders a page showing a single VM and its monitored processes"""
     ip = request.args.get('ip')
     global current_status
@@ -174,7 +170,7 @@ async def open_vm():
     vm = next((obj for obj in vmlist if obj['ip'] == ip), None)
     proclist = await get_proc_from_processes(ip)
     if not proclist["success"]:
-        return await render_template('error.html', error=proclist["error"])
+        return await render_template('vm.html', vm=vm, proclist={})
     proclist = [obj for obj in proclist['result']]
     return await render_template('vm.html', vm=vm, proclist=proclist)
 
@@ -211,7 +207,7 @@ async def monitoring_vm():
     result = await load_last_monitoring(ip)
     if result["success"]:
         return jsonify(result)
-    return jsonify({'success': False}), 300
+    return jsonify({'success': False})
 
 
 @app.route('/add_proc_monitoring', methods=['POST'])
@@ -232,14 +228,48 @@ async def add_proc_monitoring():
 async def get_processes_from_monitoring():
     """Returns the list of configured monitored processes for a specified VM"""
     ip = request.args.get('ip')
-    print("get_processes_from_monitoring", ip)
     global current_status
     current_status = f"loading {ip} processes_from_monitoring"
     result = await get_proc_from_processes(ip)
-    print(str(result))
     if result:
-        print(jsonify(result))
         return jsonify(result)
     return jsonify({'success': False}), 300
 
 
+# @app.route('/logs_vm_open', methods=['GET'])
+# async def logs_vm_open():
+#     """Renders a page showing a single VM and its logged processes"""
+#     ip = request.args.get('ip')
+#     global current_status
+#     current_status = f"{current_status_messages['loading _logs']} {ip}"
+#     result_proc = await get_proc_from_processes(ip)
+#     if result_proc["success"]:
+#        result_logs= await load_last_log(ip,result_proc)
+#        print(result_logs)
+#        return jsonify(result_logs)
+
+@app.route('/get_last_logs', methods=['GET'])
+async def get_last_logs():
+    ip=request.args.get('ip')
+    log_path=request.args.get('path')
+    global current_status
+    current_status = f"{current_status_messages['loading _logs']} {ip}"
+    result_logs= await get_logs(ip, log_path)
+    if result_logs["success"]:
+        return result_logs
+    else:
+        return {'success':True,'result':'no data'}
+
+
+@app.route('/get_all_logs', methods=['GET'])
+async def get_all_logs():
+    ip=request.args.get('ip')
+    log_path=request.args.get('path')
+    host_path=request.args.get('host_path')
+    global current_status
+    current_status = f"{current_status_messages['loading _logs']} {ip}"
+    result_logs= await zip_all_logs(ip, log_path,host_path)
+    if result_logs["success"]:
+        return result_logs
+    else:
+        return {'success':True,'result':'no data'}

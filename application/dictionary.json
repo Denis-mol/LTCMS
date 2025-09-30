@@ -27,11 +27,16 @@
     "loading _vm": "loading _vm",
     "deleting_vm": "deleting_vm",
     "dbs_init":"error! dbs_init fail",
-    "error_duplicate":"error! duplicate object"
+    "error_duplicate":"error! duplicate object",
+    "loading _logs": "loading _logs",
+    "timeout": "timeout",
+    "file_not_found_downloading": "file not found for downloading",
+    "error_downloading": "error_downloading",
+    "error_zip_packaging": "error_zip_packaging"
   },
   "sql": {
     "load_users": "SELECT name, status, range, permissions FROM users",
-    "add_user": "INSERT INTO users(name, status, range, password, permissions) VALUES (?, ?, ?, ?, ?)",
+    "add_user": "INSERT OR IGNORE INTO users(name, status, range, password, permissions) VALUES (?, ?, ?, ?, ?)",
     "delete_user": "DELETE FROM users WHERE name = ?",
     "update_user": "REPLACE INTO users(name, status,range,password, permissions) VALUES ( ?, ?, ?, ?, ?)",
     "check_user_exists": "SELECT 1 FROM users WHERE name=?",
@@ -48,20 +53,23 @@
     "select_all_tables": "SELECT name FROM sqlite_master WHERE type='table';",
     "get_processes_from_monitoring": "SELECT name, version, monitoring_period, logs_path FROM processes WHERE ip=?",
     "get_all_processes_from_monitoring": "SELECT * FROM processes",
-    "delete_proc": "DELETE FROM processes WHERE ip=? and name=?"
-  },
+    "delete_proc": "DELETE FROM processes WHERE ip=? and name=?",
+    "drop_table": "DROP TABLE IF EXISTS ?",
+    "check_table_exists": "SELECT name FROM sqlite_master WHERE type='table' AND name = ?"},
   "path": {
     "DATABASE_VMS" : "\\db\\vms.db",
-    "DATABASE_VMS_SCHEMA" : "\\db\\schemas\\vms_schema.sql",
-    "DATABASE_USERS" : "\\db\\users.db",
-    "MONITORING_PATH":"\\db\\monitoring",
-    "DATABASE_MONITORING":"\\db\\monitoring\\monitoring.db",
-    "DATABASE_USERS_SCHEMA" : "\\db\\schemas\\users_schema.sql",
-    "SCRIPTS_SCHEMA" : "\\db\\schemas\\scripts_schema.sql",
-    "PROCESSES_SCHEMA":"\\db\\schemas\\processes_schema.sql",
-    "REESTR_SCHEMA": "\\db\\schemas\\monitoring_reestr.sql"
+"DATABASE_VMS_SCHEMA" : "\\db\\schemas\\vms_schema.sql",
+"DATABASE_USERS" : "\\db\\users.db",
+"MONITORING_PATH":"\\db\\monitoring",
+"DATABASE_MONITORING":"\\db\\monitoring\\monitoring.db",
+"DATABASE_USERS_SCHEMA" : "\\db\\schemas\\users_schema.sql",
+"SCRIPTS_SCHEMA" : "\\db\\schemas\\scripts_schema.sql",
+"PROCESSES_SCHEMA":"\\db\\schemas\\processes_schema.sql",
+"REESTR_SCHEMA": "\\db\\schemas\\monitoring_reestr.sql"
   },
   "commands": {
-    "get_proc_loads": "pids=$(pidof -x {proc}); [ -n \"$pids\" ] && ps -p $pids -o %cpu,%mem --no-header | awk '{{cpu+=$1; mem+=$2}} END {{print cpu, mem}}' || echo \"0 0\""
+    "get_proc_loads": "pids=$(pidof -x {proc}); [ -n \"$pids\" ] && ps -p $pids -o %cpu,%mem --no-header | awk '{{cpu+=$1; mem+=$2}} END {{print cpu, mem}}' || echo \"0 0\"",
+    "get_last_log_records_by_tail": "tail -n {tail} \"$(ls -1t {log_path} | head -n1 | xargs -I{{}} echo {log_path}/{{}})\""
       }
 }
+

@@ -8,4 +8,4 @@ CREATE TABLE IF NOT EXISTS vms (
                    ssh_user TEXT NOT NULL,
                    ssh_password TEXT NOT NULL,
                    ssh_port INTEGER NOT NULL
-                    );
+                   );

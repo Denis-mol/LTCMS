@@ -5,4 +5,4 @@ CREATE TABLE IF NOT EXISTS users (
             permissions TEXT NOT NULL,
             status TEXT NOT NULL,
             range TEXT NOT NULL
-             );
+            );

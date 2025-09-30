@@ -22,7 +22,7 @@ async def test_read_file_and_json(tmp_path):
     text_file = tmp_path / "myfile.txt"
     text_file.write_text("hello world")
     result = await read_file(str(text_file))
-    assert result == "hello world"
+    assert result == "hello word"
 
 
     fail = await read_file(str(tmp_path / "absent.txt"))

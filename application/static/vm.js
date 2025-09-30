@@ -45,12 +45,11 @@ function deleteRow(ip, name) {
     })
     .catch(e => alert("Network or JSON error: " + e));
 }
-
 function add_proc_to_monitoring(ip) {
     if (document.getElementById('add-proc-form')) {
-        return;
+        return; // Prevent duplicate form
     }
-    const tbody = document.querySelector('#proc-table tbody');
+    const tbody = document.querySelector('#add-proc tbody'); // Исправьте селектор!
     const tr = document.createElement('tr');
     tr.id = 'add-proc-form';
     tr.innerHTML = `
@@ -66,6 +65,26 @@ function add_proc_to_monitoring(ip) {
     `;
     tbody.appendChild(tr);
 }
+//function add_proc_to_monitoring(ip) {
+//    if (document.getElementById('add-proc-form')) {
+//        return;
+//    }
+//    const tbody = document.querySelector('#add_proc tbody');
+//    const tr = document.createElement('tr');
+//    tr.id = 'add-proc-form';
+//    tr.innerHTML = `
+//        <td colspan="7">
+//        <form onsubmit="send_proc_to_monitoring(event, this, '${ip}')">
+//            name <input type="text" name="name" placeholder="Name" required>
+//            version <input type="text" name="version" placeholder="version">
+//            monitoring_period <input type="text" name="monitoring_period" placeholder="monitoring_period" value="0">
+//            logs_path <input type="text" name="logs_path" placeholder="logs_path">
+//            <button type="submit">Save</button>
+//        </form>
+//        </td>
+//    `;
+//    tbody.appendChild(tr);
+//}
 
 function send_proc_to_monitoring(event, form,ip) {
 event.preventDefault();
@@ -97,31 +116,11 @@ event.preventDefault();
 });
 }
 
-function showLogs(obj) {
-    const tbody = document.querySelector('#log-table tbody');
-    tbody.innerHTML = '';
-    for (const key in obj) {
-        if (obj.hasOwnProperty(key)) {
-            const tr = document.createElement('tr');
-            const tdKey = document.createElement('td');
-            tdKey.textContent = key;
-            tr.appendChild(tdKey);
 
-            for (const elem of obj[key]) {
-                const tdVal = document.createElement('td');
-                tdVal.textContent = elem;
-                tr.appendChild(tdVal);
-            }
-            tbody.appendChild(tr);
-        }
-    }
-}
 
 function showMonitoring(obj) {
     const tbody = document.querySelector('#proc-data-table tbody');
     tbody.innerHTML = '';
-
-
     const headerTr = document.createElement('tr');
     ['Process', 'Datetime', 'CPU', 'RAM', 'ERR'].forEach(text => {
         const th = document.createElement('th');
@@ -164,30 +163,12 @@ function showMonitoring(obj) {
 
 window.onload = () => showTable(vmlist,proclist);
 
-function logs_vm_open(ip) {
-    const data = { ip: vmlist['ip'] };
-    fetch('/logs_vm_open', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(data),
-    })
-  .then(resp => resp.json()
-    .then(json => ({ ok: resp.ok, status: resp.status, ...json }))
-)
-.then(result => {
-    if (result.ok) {
-        location.reload();
-    } else {
-        alert(result.error || `Error: ${result.status}`);
-    }
-})
-.catch(e => {
-    alert("Network or JSON error: " + e);
-});
-}
 
 function monitoring_vm(ip) {
-    fetch(`/monitoring_vm?ip=${ip}`)
+    fetch(`/monitoring_vm?ip=${ip}`, {
+        method: 'GET',
+        headers: {'Content-Type': 'application/json'},
+    })
         .then(resp => resp.json()
             .then(json => ({ ok: resp.ok, status: resp.status, ...json }))
         )
@@ -290,3 +271,95 @@ function updateRow(event, form) {
         alert("Network or JSON error: " + e);
     });
 }
+
+//function logs_vm_open( ) {
+//const proclist = {{ proclist | tojson | safe }};
+//showLogs(proclist);
+//}
+
+function get_last_logs(ip, logs_path) {
+    fetch(`/get_last_logs?ip=${encodeURIComponent(ip)}&path=${encodeURIComponent(logs_path)}`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.ok || result.success) {
+            showLogs(result);
+        } else {
+            alert(result.error || `Error: ${result.status}`);
+        }
+    })
+    .catch(err => {
+        alert("Network or JSON error: " + err);
+    });
+}
+
+function showLogs(logs) {
+    const logsTbody = document.querySelector('#last_log tbody');
+    logsTbody.innerHTML = '';
+    let lines = [];
+    if (Array.isArray(logs.result)) {
+        lines = logs.result;
+    } else if (typeof logs.result === "string") {
+        lines = logs.result.split(/\r?\n/);
+    }
+    lines.forEach(line => {
+        if (!line.trim()) return;
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.textContent = line;
+        tr.appendChild(td);
+        logsTbody.appendChild(tr);
+    });
+}
+
+
+
+function get_all_logs(ip,logs_path,host_path) {
+
+
+  fetch(`/get_all_logs?ip=${encodeURIComponent(ip)}&path=${encodeURIComponent(logs_path)}&host_path=${encodeURIComponent(host_path)}`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.ok || result.success) {
+            showLogs(result);
+        } else {
+            alert(result.error || `Error: ${result.status}`);
+        }
+    })
+    .catch(err => {
+        alert("Network or JSON error: " + err);
+    });
+}
+
+
+
+
+
+
+
+
+//    fetch(`/logs_vm_open?ip=${encodeURIComponent(ip)}`, {
+//
+//
+//    .then(resp => resp.json()
+//
+//    showLogs(proclist);
+//        .then(json => ({ ok: resp.ok, status: resp.status, ...json }))
+
+//    )
+//    .then(result => {
+//        if (result.ok || result.success) {
+//            showLogs(result.result, proclist);
+//        } else {
+//            alert(result.error || `Error: ${result.status}`);
+//        }
+//    })
+//    .catch(e => {
+//        alert("Network or JSON error: " + e);
+//    });
+

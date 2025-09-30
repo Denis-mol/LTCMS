@@ -4,4 +4,5 @@ CREATE TABLE IF NOT EXISTS processes (
             version TEXT,
             monitoring_period INTEGER,
             logs_path TEXT,
-            UNIQUE (ip, name));
+            UNIQUE (ip, name)
+            );
