@@ -88,10 +88,22 @@ def async_db_error_handler(func):
         try:
             return await func(*args, **kwargs)
         except Exception as e:
+            logging.error(f"{func} Exception: {func.__name__}: {str(e)}")
             return {"success": False, "error": f'{func.__name__}: {str(e)}'}
 
     return wrapper
 
+def async_error_handler(func):
+    @functools.wraps(func)
+    async def simple_wrapper(*args, **kwargs):
+        """Decorator for uniform exception handling in async functions.
+        Returns a dictionary with "success": False and error description to log."""
+        try:
+            return await func(*args, **kwargs)
+        except Exception as e:
+            logging.error(f"{func} Exception: {func.__name__}: {str(e)}")
+            return False
+    return simple_wrapper
 
 #Database Initialization
 def make_dir(path):
@@ -132,7 +144,6 @@ async def drop_table(db_path, tablename):
             await db.executescript(sql_script=(sql["drop_table"], tablename))
             await db.commit()
             logging.info("%s drop_table ok", db_path)
-            print("dropp")
             return {'success': True}
         else:
             logging.info("%s not drop_table", db_path)
@@ -184,17 +195,13 @@ async def load_users():
 async def add_user(entry):
     """Adds a user entry. Returns error if duplicate."""
     async with aiosqlite.connect(DATABASE_USERS) as db:
-        print(DATABASE_USERS)
-        async with db.execute("SELECT name FROM sqlite_master WHERE type='table';") as cursor:
-            tables = await cursor.fetchall()
-            print(tables)
-        # cursor = await db.execute(sql["add_user"], (
-        #     entry['name'], entry['status'], entry['range'], entry['password'], entry['permissions']
-        # ))
-        # await db.commit()
-        # if cursor.rowcount == 1:
-        #     return {'success': True}
-        # return json.loads(error_messages["warning_add"])
+        cursor = await db.execute(sql["add_user"], (
+            entry['name'], entry['status'], entry['range'], entry['password'], entry['permissions']
+        ))
+        await db.commit()
+        if cursor.rowcount == 1:
+            return {'success': True}
+        return json.loads(error_messages["warning_add"])
 
 
 @async_db_error_handler
@@ -383,7 +390,7 @@ async def get_ssh_params():
             }
         return {"success": True, "result": result}
 
-
+@async_error_handler
 async def poller(conn, ip, component, interval):
     """ Continuously polls a remote process on a VM via SSH and records its resource usage."""
     cmd = (commands['get_proc_loads'])
@@ -395,10 +402,9 @@ async def poller(conn, ip, component, interval):
             if result:
                 cpu, mem = result
                 err = res.stderr
-                print(interval)
                 await make_monitoring_record({"ip": ip, "name": component, "cpu": cpu, "ram": mem, "err": err})
         except Exception as e:
-            print(f"[{ip}] '{cmd}' error: {e}")
+            logging.error(f"poller Exception: {e}")
         await asyncio.sleep(interval)
 
 
@@ -410,12 +416,11 @@ async def session_mgr(ip, username, password, port, processes):
         if conn:
             for proc in processes:
                 if len(proc) > 0 and proc[1] != 0:
-                    print(ip, username, password, port, proc[0], proc[1])
                     pollers.append(asyncio.create_task(poller(conn, ip, proc[0], proc[1])))
             if pollers:
                 await asyncio.gather(*pollers)
     except Exception as e:
-        print(e)
+        logging.error(f"session_mgr Exception: {e}")
 
 
 async def monitoring_run():
@@ -471,9 +476,11 @@ async def make_monitoring_record(entry):
 async def load_names_list_processes_by_ip(ip):
     """Returns all process names configured for monitoring on a specific VM."""
     async with aiosqlite.connect(DATABASE_VMS) as db:
-        cursor = await db.execute(sql["select_processes_name_by_ip"], (ip,))
-        rows = await cursor.fetchall()
-        return {"success": True, "result": [r[0] for r in rows]}
+            cursor = await db.execute(sql["select_processes_name_by_ip"], (ip,))
+            rows = await cursor.fetchall()
+            if rows:
+                return {"success": True, "result": [r[0] for r in rows]}
+
 
 
 @async_db_error_handler
@@ -567,7 +574,7 @@ async def get_monitoring_records_by_proclist_from_proctable(procdbename, process
     return {"success": True, 'result': processes_monitoring}
 
 
-@async_db_error_handler
+@async_error_handler
 async def load_last_monitoring(ip):
     """For a given VM, retrieves the most recent monitoring records for all associated processes."""
     logging.info("try load_last_monitoring %s ", ip)
@@ -579,9 +586,8 @@ async def load_last_monitoring(ip):
     proclist = await get_monitoring_records_by_proclist_from_proctable(procdbename, processes)
     return proclist
 
-@async_db_error_handler
+@async_error_handler
 async def get_logs(ip, log_path):
-    """Gets logs from remote VM."""
     vm_params = await get_ssh_params()
     tail = config.get('MAX_LOG_TAIL') or 10
     if vm_params["success"]:
@@ -593,66 +599,37 @@ async def get_logs(ip, log_path):
         try:
             result = await (await asyncio.wait_for(conn, 5)).run(
                 commands["get_last_log_records_by_tail"].format(tail=tail, log_path=log_path))
-
             if not result.stderr:
                 return {"success": True, 'result': result.stdout}
             return {"success": False, 'err': result.stderr}
         except Exception as ex:
-
             return {"success": False, 'err': ex}
 
-
-@async_db_error_handler
-async def load_last_log(ip, result):
-    """Loads last logs for all processes with log paths. """
-    res = {}
-    pr = {}
-    for proc in result['result']:
-        if proc['logs_path']:
-            t = await get_logs(ip, proc['logs_path'])
-            if t['success']:
-                pr[proc['name']] = t['result']
-            else:
-                pr[proc['name']]= ''
-    return {
-        "success": True,
-        "result": res
-    }
-
-
-
-@async_db_error_handler
+@async_error_handler
 async def make_zip_all_logs(log_path, filename, conn):
     """Make zip log on VM"""
-
-    try:
-        remote_zip = f"{log_path}/{filename}"
-        command = f"cd {log_path} && zip -r {remote_zip} ."
-        result = await conn.run(command)
-        return result.stdout, result.stderr
-    except Exception as e:
-        return False, str(e)
+    remote_zip = f"{log_path}/{filename}"
+    command = f"cd {log_path} && zip -r {remote_zip} ."
+    result = await conn.run(command)
+    return result.stdout, result.stderr
 
 
-@async_db_error_handler
+
+@async_error_handler
 async def download_remote_file(remote_path, local_path, conn):
-    """Download zip log from VM """
-    try:
-        async with conn.start_sftp_client() as sftp:
-            await sftp.get(remote_path, local_path)
-            return True, None
-    except Exception as e:
-        return False, str(e)
+     async with conn.start_sftp_client() as sftp:
+        await sftp.get(remote_path, local_path)
+        return True, None
 
 
-@async_db_error_handler
+
+@async_error_handler
 async def zip_all_logs(ip, log_path, local_log_dir):
     """Zips and downloads logs from remote VM."""
     os.makedirs(local_log_dir, exist_ok=True)
     vm_params = await get_ssh_params()
     results = {}
-    try:
-        conn = await asyncssh.connect(
+    conn = await asyncssh.connect(
             ip,
             username=vm_params["result"][ip]["ssh_user"],
             password=vm_params["result"][ip]["ssh_password"],
@@ -661,7 +638,7 @@ async def zip_all_logs(ip, log_path, local_log_dir):
             keepalive_interval=600,
             keepalive_count_max=10000
         )
-        try:
+    try:
             timestamp = datetime.datetime.now().strftime("%d%m%y_%H%M%S")
             zip_filename = f"ip{ip.replace('.', '')}_date{timestamp}.zip"
             out, err = await make_zip_all_logs(log_path, zip_filename, conn)
@@ -685,11 +662,9 @@ async def zip_all_logs(ip, log_path, local_log_dir):
             if os.path.isfile(local_zip_path):
                 results["success"] = True
             results["success"] = False
-        finally:
+            return results
+    except Exception as ex:
+        return {"success": False, "error": f'error: {str(ex)}'}
+    finally:
             conn.close()
             await conn.wait_closed()
-    except Exception as ex:
-        results[ip] = {"status_get_logs": f'error: {str(ex)}'}
-        results["success"] = False
-
-    return results
